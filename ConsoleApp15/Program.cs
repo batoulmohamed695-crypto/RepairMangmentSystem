@@ -1,14 +1,22 @@
 ﻿using System;
 using System.Collections.Generic;
 
+// الطلب الخامس: فئة ثابتة للتحقق من البيانات + خاصية ثابتة لعدم التكرار وتتبع العدد
 public static class ValidationHelper
 {
+    //  (حساب أو تتبع عدد الأجهزة التي تمت معالجتها)
+    public static int TotalProcessedDevices { get; set; } = 0;
+
     public static bool ValidateSerialNumber(string serialNumber)
     {
+        //فحص بسيط للتأكد من أن الرقم ليس فارغاً 
         if (string.IsNullOrWhiteSpace(serialNumber))
             return false;
 
-        return serialNumber.Contains("-");
+        if (!serialNumber.Contains("-"))
+            return false;
+
+        return true;
     }
 }
 
@@ -19,6 +27,7 @@ public enum RepairStatus
     Completed
 }
 
+//  ِ (Delegate) لإشعار تغير الحالة
 public delegate void RepairStatusChangedHandler(string serialNumber, RepairStatus newStatus);
 
 public interface IRepairable
@@ -31,154 +40,203 @@ public interface IRepairable
     string GetSummary();
 }
 
+// الفئة المجردة الأساسية للأجهزة
 public abstract class Appliance : IRepairable
 {
-    private readonly decimal _partsCost;
-    private readonly double _laborHours;
-    private readonly decimal _laborRatePerHour;
-    private RepairStatus _status;
+    private decimal partsCost;
+    private double laborHours;
+    private decimal laborRatePerHour;
+    private RepairStatus status;
 
-    
+    // الحدث الخاص بتغير الحالة
     public static event RepairStatusChangedHandler OnStatusChanged;
 
-    public string SerialNumber { get; }
-    public RepairStatus Status { get { return _status; } }
+    public string SerialNumber { get; private set; }
+
+    public RepairStatus Status
+    {
+        get { return status; }
+    }
+
     public abstract string ApplianceType { get; }
 
-    protected Appliance(string serialNumber, decimal partsCost,
-                        double laborHours, decimal laborRatePerHour)
+    protected Appliance(string serialNumber, decimal partsCost, double laborHours, decimal laborRatePerHour)
     {
-       
-        if (!ValidationHelper.ValidateSerialNumber(serialNumber))
+        bool isValid = ValidationHelper.ValidateSerialNumber(serialNumber);
+        if (!isValid)
         {
-            throw new ArgumentException("الرقم التسلسلي غير صالح!");
+            throw new ArgumentException("Error: Serial number is not valid!");
         }
 
         SerialNumber = serialNumber;
-        _partsCost = partsCost;
-        _laborHours = laborHours;
-        _laborRatePerHour = laborRatePerHour;
-        _status = RepairStatus.Pending;
+        this.partsCost = partsCost;
+        this.laborHours = laborHours;
+        this.laborRatePerHour = laborRatePerHour;
+        this.status = RepairStatus.Pending;
     }
+
 
     public abstract decimal CalculateRepairCost();
 
+    // دالة لحساب التكلفة الأساسية المشتركة
     protected decimal CalculateBaseCost()
     {
-        return _partsCost + (decimal)_laborHours * _laborRatePerHour;
+        decimal baseTotal = partsCost + (decimal)laborHours * laborRatePerHour;
+        return baseTotal;
     }
 
     public void ChangeStatus(RepairStatus newStatus)
     {
-        _status = newStatus;
+        status = newStatus;
 
-        if (OnStatusChanged != null)
+       
+        RepairStatusChangedHandler handler = OnStatusChanged;
+        if (handler != null)
         {
-            OnStatusChanged(SerialNumber, _status);
+            handler(SerialNumber, status);
         }
     }
 
     public string GetSummary()
     {
-        return string.Format("Type: {0}, Serial: {1}, Status: {2}",
-            ApplianceType, SerialNumber, Status);
+        return "Appliance Type: " + ApplianceType + ", Serial No: " + SerialNumber + ", Current Status: " + Status;
     }
 }
+
 
 public class Refrigerator : Appliance
 {
-    private readonly bool _hasFreezer;
+    private bool hasFreezer;
 
-    public override string ApplianceType { get { return "Refrigerator"; } }
-    public bool HasFreezer { get { return _hasFreezer; } }
+    public override string ApplianceType
+    {
+        get { return "Refrigerator"; }
+    }
 
-    public Refrigerator(string serialNumber, decimal partsCost,
-                        double laborHours, decimal laborRatePerHour, bool hasFreezer)
+    public bool HasFreezer
+    {
+        get { return hasFreezer; }
+    }
+
+    public Refrigerator(string serialNumber, decimal partsCost, double laborHours, decimal laborRatePerHour, bool hasFreezer)
         : base(serialNumber, partsCost, laborHours, laborRatePerHour)
     {
-        _hasFreezer = hasFreezer;
+        this.hasFreezer = hasFreezer;
     }
 
     public override decimal CalculateRepairCost()
     {
-        decimal baseCost = CalculateBaseCost();
-        if (_hasFreezer)
+        decimal cost = CalculateBaseCost();
+        if (hasFreezer == true)
         {
-            baseCost += 50.0m;
+            cost = cost + 50.0m; // تكلفة إضافية للثلاجة التي تحتوي على فريزر
         }
-        return baseCost;
+        return cost;
     }
 }
 
+// فئة الغسالة
 public class WashingMachine : Appliance
 {
-    private readonly int _capacityKg;
+    private int capacityKg;
 
-    public override string ApplianceType { get { return "WashingMachine"; } }
-    public int CapacityKg { get { return _capacityKg; } }
+    public override string ApplianceType
+    {
+        get { return "WashingMachine"; }
+    }
 
-    public WashingMachine(string serialNumber, decimal partsCost,
-                          double laborHours, decimal laborRatePerHour, int capacityKg)
+    public int CapacityKg
+    {
+        get { return capacityKg; }
+    }
+    public WashingMachine(string serialNumber, decimal partsCost, double laborHours, decimal laborRatePerHour, int capacityKg)
         : base(serialNumber, partsCost, laborHours, laborRatePerHour)
     {
-        _capacityKg = capacityKg;
+        this.capacityKg = capacityKg;
     }
 
     public override decimal CalculateRepairCost()
     {
-        decimal baseCost = CalculateBaseCost();
-        if (_capacityKg > 8)
+        decimal cost = CalculateBaseCost();
+        if (capacityKg > 8)
         {
-            baseCost += 30.0m;
+            cost = cost + 30.0m; // زيادة السعة الكبيرة
         }
-        return baseCost;
+        return cost;
     }
 }
 
+// فئة المكيف
 public class AirConditioner : Appliance
 {
-    private readonly double _btu;
+    private double btu;
 
-    public override string ApplianceType { get { return "AirConditioner"; } }
-    public double Btu { get { return _btu; } }
-    public AirConditioner(string serialNumber, decimal partsCost,
-                          double laborHours, decimal laborRatePerHour, double btu)
+    public override string ApplianceType
+    {
+        get { return "AirConditioner"; }
+    }
+
+    public double Btu
+    {
+        get { return btu; }
+    }
+
+    public AirConditioner(string serialNumber, decimal partsCost, double laborHours, decimal laborRatePerHour, double btu)
         : base(serialNumber, partsCost, laborHours, laborRatePerHour)
     {
-        _btu = btu;
+        this.btu = btu;
     }
 
     public override decimal CalculateRepairCost()
     {
-        decimal baseCost = CalculateBaseCost();
-        return baseCost + 40.0m;
+        decimal cost = CalculateBaseCost();
+        cost = cost + 40.0m; // تكلفة صيانة خاصة بالمكيفات
+        return cost;
     }
 }
 
 public class Program
 {
+    //دالة معالجة الحدث ت Lambda 
+    public static void DisplayAlertMessage(string serial, RepairStatus status)
+    {
+        Console.WriteLine("-> [Event Notification]: Device {0} status has changed to: {1}", serial, status);
+    }
+
     public static void Main(string[] args)
     {
-       
-        Appliance.OnStatusChanged += (serial, status) =>
-        {
-            Console.WriteLine($"[تنبيه الحدث]: الجهاز ({serial}) تغيرت حالته إلى: {status}");
-        };
+        // ربط الحدث بالطريقة التقليدية الواضحة للأساتذة
+        Appliance.OnStatusChanged += new RepairStatusChangedHandler(DisplayAlertMessage);
 
-        List<IRepairable> workshopAppliances = new List<IRepairable>();
+        // إنشاء قائمة لتطبيق تعدد الأشكال (Polymorphism List)
+        List<IRepairable> myWorkshopList = new List<IRepairable>();
 
-        workshopAppliances.Add(new Refrigerator("REF-101", 120.0m, 2.5, 30.0m, true));
-        workshopAppliances.Add(new WashingMachine("WM-202", 80.0m, 1.5, 25.0m, 9));
-        workshopAppliances.Add(new AirConditioner("AC-303", 200.0m, 3.0, 35.0m, 18000));
+        myWorkshopList.Add(new Refrigerator("REF-101", 120.0m, 2.5, 30.0m, true));
+        myWorkshopList.Add(new WashingMachine("WM-202", 80.0m, 1.5, 25.0m, 9));
+        myWorkshopList.Add(new AirConditioner("AC-303", 200.0m, 3.0, 35.0m, 18000));
 
-        foreach (IRepairable item in workshopAppliances)
+        // حلقة تكرار لعرض البيانات وحساب التكاليف لكل الأجهزة
+        foreach (IRepairable item in myWorkshopList)
         {
             Console.WriteLine(item.GetSummary());
-            Console.WriteLine("Repair Cost: " + item.CalculateRepairCost());
 
+            decimal totalCost = item.CalculateRepairCost();
+            Console.WriteLine("Total Repair Cost: " + totalCost);
+
+            // تغيير الحالة لاختبار الحدث[
             item.ChangeStatus(RepairStatus.InProgress);
             item.ChangeStatus(RepairStatus.Completed);
-            Console.WriteLine("-------------------");
+
+            // زيادة عداد الفئة الثابتة عند الانتهاء من كل جهاز
+            ValidationHelper.TotalProcessedDevices++;
+
+            Console.WriteLine("---------------------------------------------");
         }
+
+        // طباعة قيمة الخاصية الثابتة للتأكد من عملها
+        Console.WriteLine("Total processed devices counted by static class: " + ValidationHelper.TotalProcessedDevices);
+
+        Console.WriteLine("\nPress any key to exit...");
+        Console.ReadKey();
     }
 }
