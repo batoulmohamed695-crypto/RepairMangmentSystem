@@ -4,6 +4,10 @@ using System.Collections.Generic;
 // الطلب الخامس: فئة ثابتة للتحقق من البيانات + خاصية ثابتة لعدم التكرار وتتبع العدد
 public static class ValidationHelper
 {
+    public static bool IsValidLength(string serialNumber)
+    {
+        return !string.IsNullOrEmpty(serialNumber) && serialNumber.Length >= 3;
+    }
     //  (حساب أو تتبع عدد الأجهزة التي تمت معالجتها)
     public static int TotalProcessedDevices { get; set; } = 0;
 
