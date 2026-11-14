@@ -245,6 +245,7 @@ public class Program
 
         // طباعة قيمة الخاصية الثابتة للتأكد من عملها
         Console.WriteLine("Total processed devices counted by static class: " + ValidationHelper.TotalProcessedDevices);
+Console.WriteLine("Total appliances count: " + myWorkshopList.Count);
 
         Console.WriteLine("\nPress any key to exit...");
         Console.ReadKey();
