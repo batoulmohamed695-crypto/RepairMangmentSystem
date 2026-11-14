@@ -63,7 +63,10 @@ public abstract class Appliance : IRepairable
     }
 
     public abstract string ApplianceType { get; }
-
+    public string GetStatusDescription()
+{
+    return "Current Repair State: " + status.ToString();
+}
     protected Appliance(string serialNumber, decimal partsCost, double laborHours, decimal laborRatePerHour)
     {
         bool isValid = ValidationHelper.ValidateSerialNumber(serialNumber);
