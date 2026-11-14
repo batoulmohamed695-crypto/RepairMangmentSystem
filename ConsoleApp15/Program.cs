@@ -114,7 +114,10 @@ public abstract class Appliance : IRepairable
 public class Refrigerator : Appliance
 {
     private bool hasFreezer;
-
+public bool CheckFreezerAvailable()
+{
+    return hasFreezer;
+}
     public override string ApplianceType
     {
         get { return "Refrigerator"; }
